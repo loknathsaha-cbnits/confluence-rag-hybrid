@@ -1,3 +1,4 @@
+import json
 import os
 import requests
 from bs4 import BeautifulSoup
@@ -9,8 +10,9 @@ load_dotenv()
 DOMAIN = os.getenv("CONFLUENCE_DOMAIN")
 EMAIL = os.getenv("CONFLUENCE_EMAIL")
 TOKEN = os.getenv("CONFLUENCE_API_TOKEN")
+SPACE_KEY = "CKB"
 
-BASE_URL = f"https://{DOMAIN}/wiki/api/v2"
+BASE_URL = f"https://{DOMAIN}/wiki/rest/api"
 AUTH = (EMAIL, TOKEN)
 HEADERS = {"Accept": "application/json"}
 
@@ -43,74 +45,66 @@ def clean_confluence_html(html_content: str) -> str:
     return "\n".join(lines)
 
 def fetch_all_pages():
-    """
-    Paginates through the entire Confluence workspace to fetch all accessible pages.
-    """
     pages_extracted = []
-    limit = 20  # Fetch 20 pages per API call to stay safe from timeouts
+    limit = 50
     start = 0
     has_more = True
 
     print("🚀 Starting Confluence Data Extraction...")
 
     while has_more:
-        endpoint = f"{BASE_URL}/pages"
+        endpoint = f"{BASE_URL}/content"          # ✅ v1 endpoint
         params = {
+            "spaceKey": SPACE_KEY,
+            "type": "page",
             "limit": limit,
             "start": start,
-            "body-format": "storage"  # Asks for raw XHTML storage layout
+            "expand": "body.storage,version",     # ✅ v1 expand
         }
-        
+
         response = requests.get(endpoint, auth=AUTH, headers=HEADERS, params=params)
-        
+
         if response.status_code != 200:
-            print(f"❌ Failed to fetch data. Status: {response.status_code}")
-            print(response.text)
+            print(f"❌ Failed. Status: {response.status_code}")
+            print(response.text[:300])
             break
-            
+
         data = response.json()
         results = data.get("results", [])
-        
+
         for page in results:
             page_id = page.get("id")
             title = page.get("title")
-            
-            # Construct the absolute web URL for citations later
-            base_web_url = f"https://{DOMAIN}/wiki"
             web_ui_link = page.get("_links", {}).get("webui", "")
-            full_url = base_web_url + web_ui_link
-            
-            last_updated = page.get("version", {}).get("createdAt", "Unknown")
-            
-            # Extract the raw XHTML body string safely
+            full_url = f"https://{DOMAIN}/wiki" + web_ui_link
+            last_updated = page.get("version", {}).get("when", "Unknown")
             raw_body = page.get("body", {}).get("storage", {}).get("value", "")
-            
-            # Clean it up!
             cleaned_text = clean_confluence_html(raw_body)
-            
-            # Pack it into a temporary structure matching your state logic
-            page_data = {
+
+            pages_extracted.append({
                 "id": page_id,
                 "title": title,
                 "url": full_url,
                 "last_updated": last_updated,
-                "content": cleaned_text
-            }
-            pages_extracted.append(page_data)
-            print(f"  Processed page: '{title}' (ID: {page_id})")
-            
-        # Check if there's another page of API results to fetch
-        next_link = data.get("_links", {}).get("next")
-        if next_link:
-            start += limit
-        else:
+                "content": cleaned_text,
+            })
+            print(f"  ✅ '{title}' (ID: {page_id})")
+
+        total = data.get("totalSize", 0)
+        start += limit
+        if start >= total:
             has_more = False
 
-    print(f"\n✅ Extraction finished! Extracted a total of {len(pages_extracted)} pages.")
+    print(f"\n✅ Done! Extracted {len(pages_extracted)} pages.")
     return pages_extracted
 
 if __name__ == "__main__":
     extracted_docs = fetch_all_pages()
+
+    with open("confluence_pages.json", "w", encoding="utf-8") as f:
+        json.dump(extracted_docs, f, indent=2, ensure_ascii=False)
+    
+    print(f"Saved {len(extracted_docs)} successfully")
     
     # Look at the first page output to verify the cleaning quality
     if extracted_docs:
