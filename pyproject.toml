@@ -16,4 +16,23 @@ dependencies = [
     "rank-bm25>=0.2.2",
     "requests>=2.34.2",
     "sentence-transformers>=5.5.0",
+    # CPU-only torch — no CUDA/NVIDIA runtime pulled in
+    "torch>=2.6.0",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true                   # only used when explicitly referenced below
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" } # forces the +cpu wheel, skips GPU variants
+
+[tool.uv]
+# Keeps the lock file reproducible across machines (Linux/Mac/Windows)
+# without accidentally pulling a CUDA wheel on a GPU-enabled CI runner
+environments = [
+    "sys_platform == 'linux'",
+    "sys_platform == 'darwin'",
+    "sys_platform == 'win32'",
 ]

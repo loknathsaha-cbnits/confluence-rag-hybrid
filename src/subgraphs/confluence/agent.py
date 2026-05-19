@@ -1,16 +1,36 @@
-from langchain_openai import ChatOpenAI
 import os
-from dotenv import load_dotenv
+from typing import Any, Dict
 
-load_dotenv()
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
 
-GROQ_API_KEY=os.getenv("GROQ_API_KEY")
-GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
+from src.graph.state import State
 
-
-llm = ChatOpenAI(
-    model="",
-    api_key=GROQ_API_KEY,
-    temperature=0.2,
-    max_retries=4
-)
+def generate_node(state: State) -> Dict[str, Any]:
+    user_query = state["query"]
+    
+    # Extract the text attribute from each chunk dictionary saved by the retriever node
+    context_blocks = []
+    for doc in state["documents"]:
+        context_blocks.append(f"Source: {doc['title']} - {doc['section']}\nContext: {doc['text']}")
+    
+    context = "\n\n---\n\n".join(context_blocks)
+    
+    print("[Node: Generate] Building answer with Llama-3.3...")
+    
+    llm = ChatOpenAI(
+        model="llama-3.3-70b-versatile",
+        api_key=os.getenv("GROQ_API_KEY"),
+        temperature=0.2,
+        base_url="https://api.groq.com/openai/v1"
+    )
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are a professional technical engineer. Answer the user prompt using only the verified source snippets provided below.\n\nSnippets:\n{context}"),
+        ("human", "{query}")
+    ])
+    
+    rag_chain = prompt | llm
+    response = rag_chain.invoke({"context": context, "query": user_query})
+    
+    return {"generation": response.content}
