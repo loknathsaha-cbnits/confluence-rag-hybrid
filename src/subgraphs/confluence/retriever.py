@@ -10,12 +10,11 @@ from sentence_transformers import SentenceTransformer
 from flashrank import Ranker, RerankRequest
 from langgraph.graph import StateGraph, START, END
 
+from src.graph.state import DataSource, SourceState, State
+
 # Load environment configuration
 load_dotenv()
-class State(TypedDict):
-    query: str
-    documents: List[Dict[str, Any]]  # Stores your final_context_chunks
-    generation: str
+
 
 class HybridRetrieverEngine:
     def __init__(self, hf_corpus_path: str = "data/upload/bm25_corpus.json", bm25_index_path: str = "data/upload/bm25_index.pkl"):
@@ -70,7 +69,7 @@ class HybridRetrieverEngine:
         dense_hits = pinecone_res.get("matches", [])
         
         tokenized_query = self._tokenize_query(query)
-        sparse_hits = self.bm25.get_top_documents(tokenized_query, self.corpus, n=top_n)
+        sparse_hits = self.bm25.get_top_n(tokenized_query, self.corpus, n=top_n)
 
         fused_candidates = self.reciprocal_rank_fusion(dense_hits, sparse_hits, k=60)
         rerank_candidates = fused_candidates[:top_n]
@@ -97,9 +96,6 @@ class HybridRetrieverEngine:
         return final_context_chunks
 
 
-# ==========================================
-# 3. INITIALIZE ENGINE INSTANCE (PERSISTENT)
-# ==========================================
 # This instantiates heavy models once at startup, rather than inside the node function.
 try:
     retriever_engine = HybridRetrieverEngine()
@@ -114,25 +110,55 @@ except Exception as e:
 def retriever_node(state: State) -> Dict[str, Any]:
     """
     LangGraph functional node. It extracts the query from the state,
-    invokes the hybrid retriever engine, and updates the state's documents.
+    invokes the hybrid retriever engine, and updates the state's retrieved_results and sources.
     """
-    user_query = state["query"]
-    
+    user_query = state.get("query", "")
     print(f"[Node: Retriever] Running hybrid retrieval + FlashRank for: '{user_query}'")
     
+    formatted_results: List[DataSource] = []
+    formatted_sources: List[SourceState] = []
+
     # Fallback placeholder if files are missing locally during dev
     if retriever_engine is None:
-        retrieved_chunks = [{
-            "chunk_id": "fallback_1",
-            "score": 1.0,
-            "title": "Fallback Context",
-            "section": "Main",
-            "url": "http://example.com",
-            "text": "Fallback engine context. Please check your local index files."
-        }]
+        dummy_source = SourceState(
+            title="Fallback Context",
+            url="http://example.com",
+            last_updated="Unknown"
+        )
+        dummy_data = DataSource(
+            chunk_id="fallback_1",
+            text_content="Fallback engine context. Please check your local index files.",
+            score=1.0,
+            source=dummy_source
+        )
+        formatted_results.append(dummy_data)
+        formatted_sources.append(dummy_source)
     else:
-        # Run your complete dense + sparse + rerank pipeline
-        retrieved_chunks = retriever_engine.search(query=user_query, top_n=15, final_k=3)
+        # Run pipeline
+        raw_chunks = retriever_engine.search(query=user_query, top_n=15, final_k=3)
+
+        print(raw_chunks)
         
-    # Return dictionary matching the State keys to update them
-    return {"documents": retrieved_chunks}
+        # Transform raw output into the Global State Schema
+        for chunk in raw_chunks:
+            source_info = SourceState(
+                title=chunk.get("title", "Unknown"),
+                url=chunk.get("url", "Unknown"),
+                last_updated="Unknown"  # Add logic if you fetch dates from Confluence metadata
+            )
+            
+            data_source = DataSource(
+                chunk_id=chunk.get("chunk_id", ""),
+                text_content=chunk.get("text", ""),
+                score=chunk.get("score", 0.0),
+                source=source_info
+            )
+            
+            formatted_results.append(data_source)
+            formatted_sources.append(source_info)
+        
+    # Update the graph state with the typed lists
+    return {
+        "retrieved_results": formatted_results,
+        "sources": formatted_sources
+    }

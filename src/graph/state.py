@@ -1,6 +1,7 @@
-from typing import Optional, TypedDict, Annotated, List
-from langchain_core.messages import BaseMessage
+import operator
+from typing import NotRequired, Optional, TypedDict, Annotated, List
 from langgraph.graph.message import add_messages
+
 
 class SourceState(TypedDict):
     title: str
@@ -21,8 +22,8 @@ class State(TypedDict):
     query: str
     user_id: str
 
-    retrieved_results: Annotated[List[DataSource], add_messages]
-    sources: Annotated[List[SourceState], add_messages]
+    retrieved_results: NotRequired[Annotated[List[DataSource], operator.add]]
+    sources: NotRequired[Annotated[List[SourceState], operator.add]]
 
-    answer: Optional[str] = None
-    confidence_score: float = 0.0
+    answer: NotRequired[str]
+    confidence_score: NotRequired[float]
