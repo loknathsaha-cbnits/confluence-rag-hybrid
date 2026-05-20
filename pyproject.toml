@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4>=4.14.3",
+    "chainlit>=2.11.1",
+    "fastapi>=0.136.1",
     "flashrank>=0.2.10",
     "huggingface-hub>=1.15.0",
     "langchain>=1.3.1",
@@ -18,6 +20,7 @@ dependencies = [
     "sentence-transformers>=5.5.0",
     # CPU-only torch — no CUDA/NVIDIA runtime pulled in
     "torch>=2.6.0",
+    "uvicorn>=0.47.0",
 ]
 
 [[tool.uv.index]]

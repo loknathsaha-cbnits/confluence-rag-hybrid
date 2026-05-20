@@ -26,9 +26,14 @@ def call_retrieval_subgraph_node(state: State) -> Dict[str, Any]:
     
     subgraph_output = compiled_subgraph.invoke(subgraph_input)
 
+    print("============== SUBGRAPH OUTPUT ==============")
+    print(subgraph_output)
+
+    # FIX: Explicitly pull 'sources' out of the subgraph and return it
     return {
         "answer": subgraph_output.get("answer", "No answer generated."),
-        "confidence_score": subgraph_output.get("confidence_score")
+        "confidence_score": subgraph_output.get("confidence_score", 0.0),
+        "sources": subgraph_output.get("sources", [])  # Passing it to Parent State
     }
 
 # Graph
