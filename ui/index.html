@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sprint Analyzer AI</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --panel-2: #f4f5f7;
+      --panel-3: #ebecf0;
+      --line: #dfe1e6;
+      --line-soft: #ebecf0;
+      --text: #172b4d;
+      --muted: #5e6c84;
+      --faint: #7a869a;
+      --accent: #0052cc;
+      --accent-2: #36b37e;
+      --warn: #ffab00;
+      --danger: #de350b;
+      --purple: #6554c0;
+      --radius: 8px;
+      --shadow: 0 12px 32px rgba(9, 30, 66, 0.12);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f1218;
+      --panel: #171b23;
+      --panel-2: #1f2530;
+      --panel-3: #29313f;
+      --line: #303948;
+      --line-soft: #252d39;
+      --text: #f4f5f7;
+      --muted: #b3bac5;
+      --faint: #8993a4;
+      --accent: #579dff;
+      --accent-2: #57d9a3;
+      --warn: #ffc400;
+      --danger: #ff7452;
+      --purple: #9f8fef;
+      --shadow: 0 16px 38px rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    [data-theme="dark"] body {
+      background: var(--bg);
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .app-shell {
+      height: 100%;
+      display: grid;
+      grid-template-rows: 64px 1fr;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 1px 0 rgba(9, 30, 66, 0.05);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 240px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius);
+      background: #deebff;
+      border: 1px solid #b3d4ff;
+      color: var(--accent);
+    }
+
+    [data-theme="dark"] .brand-mark {
+      background: #082145;
+      border-color: #1d4f91;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .topbar-center {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .sprint-pill {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .jira-pill {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 10px;
+      border: 1px solid #abf5d1;
+      border-radius: var(--radius);
+      background: #e3fcef;
+      color: #006644;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    [data-theme="dark"] .jira-pill {
+      background: #063b2a;
+      border-color: #1f845a;
+      color: #7ee2b8;
+    }
+
+    .sprint-pill span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn,
+    .text-btn {
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+
+    .icon-btn {
+      width: 36px;
+    }
+
+    .text-btn {
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .icon-btn:hover,
+    .text-btn:hover {
+      border-color: #b3bac5;
+      background: var(--panel-2);
+      color: #0747a6;
+    }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr) 300px;
+      background: var(--bg);
+    }
+
+    .sidebar,
+    .inspector {
+      min-height: 0;
+      overflow: auto;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      background: #fafbfc;
+    }
+
+    [data-theme="dark"] .sidebar,
+    [data-theme="dark"] .inspector {
+      background: #12161d;
+    }
+
+    .inspector {
+      border-right: 0;
+      border-left: 1px solid var(--line);
+    }
+
+    .section {
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric {
+      padding: 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: 0 1px 2px rgba(9, 30, 66, 0.04);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .metric-value {
+      margin-top: 7px;
+      color: var(--text);
+      font-size: 23px;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .metric-sub {
+      margin-top: 6px;
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .progress-shell {
+      padding: 14px;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: 0 1px 2px rgba(9, 30, 66, 0.04);
+    }
+
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .progress-track {
+      height: 9px;
+      margin: 12px 0 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #ebecf0;
+    }
+
+    [data-theme="dark"] .progress-track {
+      background: #303948;
+    }
+
+    .progress-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.45s ease;
+    }
+
+    .scrum-nav {
+      display: grid;
+      gap: 6px;
+    }
+
+    .scrum-nav-item {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px;
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .scrum-nav-item.active {
+      background: #deebff;
+      color: #0747a6;
+    }
+
+    [data-theme="dark"] .scrum-nav-item.active {
+      background: #092957;
+      color: #85b8ff;
+    }
+
+    .scrum-nav-item i {
+      color: var(--faint);
+    }
+
+    .scrum-nav-item.active i {
+      color: var(--accent);
+    }
+
+    .quick-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .query-chip {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 11px;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .query-chip:hover {
+      transform: translateY(-1px);
+      border-color: #b3bac5;
+      background: #f4f5f7;
+    }
+
+    .query-chip i {
+      color: var(--accent-2);
+      flex: 0 0 auto;
+    }
+
+    .query-chip span {
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.25;
+    }
+
+    .chat-pane {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 1fr auto;
+    }
+
+    #chat {
+      min-height: 0;
+      overflow-y: auto;
+      padding: 24px clamp(18px, 3vw, 44px);
+      scroll-behavior: smooth;
+    }
+
+    #chat::-webkit-scrollbar,
+    .sidebar::-webkit-scrollbar,
+    .inspector::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #chat::-webkit-scrollbar-track,
+    .sidebar::-webkit-scrollbar-track,
+    .inspector::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #chat::-webkit-scrollbar-thumb,
+    .sidebar::-webkit-scrollbar-thumb,
+    .inspector::-webkit-scrollbar-thumb {
+      background: #c1c7d0;
+      border-radius: 999px;
+    }
+
+    [data-theme="dark"] #chat::-webkit-scrollbar-thumb,
+    [data-theme="dark"] .sidebar::-webkit-scrollbar-thumb,
+    [data-theme="dark"] .inspector::-webkit-scrollbar-thumb {
+      background: #505f79;
+    }
+
+    .welcome-panel {
+      max-width: 850px;
+      margin: 0 auto 18px;
+      padding: 18px;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .welcome-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .welcome-header h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+
+    .welcome-header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .health-chip {
+      flex: 0 0 auto;
+      padding: 9px 11px;
+      border-radius: var(--radius);
+      border: 1px solid #ffe380;
+      background: #fff0b3;
+      color: #7a4f01;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .suggestion-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .suggestion-card {
+      min-height: 86px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .suggestion-card:hover {
+      transform: translateY(-1px);
+      border-color: #b3bac5;
+      background: #f4f5f7;
+    }
+
+    .suggestion-card i {
+      color: var(--accent);
+    }
+
+    .suggestion-card span {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .message {
+      max-width: 920px;
+      margin: 18px auto 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      animation: rise 0.16s ease-out;
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+    }
+
+    .message.user .avatar {
+      order: 2;
+      background: #deebff;
+      color: var(--accent);
+    }
+
+    [data-theme="dark"] .message.user .avatar {
+      background: #092957;
+    }
+
+    .message-body {
+      min-width: 0;
+      max-width: min(780px, 100%);
+    }
+
+    .message-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+      color: var(--faint);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .bubble {
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--panel);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 14px;
+    }
+
+    .message.user .bubble {
+      padding: 12px 14px;
+      background: #deebff;
+      border-color: #b3d4ff;
+      color: #0747a6;
+    }
+
+    [data-theme="dark"] .message.user .bubble {
+      background: #092957;
+      border-color: #1d4f91;
+      color: #cce0ff;
+    }
+
+    .message.assistant .bubble {
+      padding: 16px 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .agent-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .agent-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .agent-tag.todo { color: #0747a6; border-color: #b3d4ff; background: #deebff; }
+    .agent-tag.health { color: #006644; border-color: #abf5d1; background: #e3fcef; }
+    .agent-tag.blocker { color: #bf2600; border-color: #ffbdad; background: #ffebe6; }
+    .agent-tag.recommendation { color: #7a4f01; border-color: #ffe380; background: #fff0b3; }
+    .agent-tag.summary { color: #403294; border-color: #c0b6f2; background: #eae6ff; }
+
+    [data-theme="dark"] .health-chip,
+    [data-theme="dark"] .agent-tag.recommendation {
+      color: #f5cd47;
+      border-color: #7f5f01;
+      background: #332600;
+    }
+
+    [data-theme="dark"] .agent-tag.todo {
+      color: #85b8ff;
+      border-color: #1d4f91;
+      background: #092957;
+    }
+
+    [data-theme="dark"] .agent-tag.health {
+      color: #7ee2b8;
+      border-color: #1f845a;
+      background: #063b2a;
+    }
+
+    [data-theme="dark"] .agent-tag.blocker {
+      color: #ff9c8f;
+      border-color: #ae2e24;
+      background: #42120b;
+    }
+
+    [data-theme="dark"] .agent-tag.summary {
+      color: #c0b6f2;
+      border-color: #6554c0;
+      background: #241b4f;
+    }
+
+    .bubble h1,
+    .bubble h2,
+    .bubble h3 {
+      margin: 18px 0 9px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    .bubble h1:first-child,
+    .bubble h2:first-child,
+    .bubble h3:first-child {
+      margin-top: 0;
+    }
+
+    .bubble p {
+      margin: 0 0 11px;
+    }
+
+    .bubble p:last-child {
+      margin-bottom: 0;
+    }
+
+    .bubble strong {
+      color: #0747a6;
+      font-weight: 800;
+    }
+
+    [data-theme="dark"] .bubble strong {
+      color: #85b8ff;
+    }
+
+    .bubble ul,
+    .bubble ol {
+      margin: 8px 0 12px;
+      padding-left: 20px;
+    }
+
+    .bubble li {
+      margin: 5px 0;
+    }
+
+    .bubble code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #deebff;
+      color: #0747a6;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+    }
+
+    [data-theme="dark"] .bubble code {
+      background: #092957;
+      color: #cce0ff;
+    }
+
+    .bubble blockquote {
+      margin: 12px 0 0;
+      padding: 12px 14px;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: #e3fcef;
+      color: #006644;
+    }
+
+    [data-theme="dark"] .bubble blockquote {
+      background: #063b2a;
+      color: #abf5d1;
+    }
+
+    .bubble hr {
+      margin: 16px 0;
+      border: 0;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .bubble table {
+      width: 100%;
+      margin: 12px 0;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: var(--radius);
+      font-size: 13px;
+    }
+
+    .bubble th,
+    .bubble td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line-soft);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .bubble th {
+      background: #18202c;
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .bubble td {
+      color: var(--text);
+    }
+
+    .composer {
+      padding: 16px clamp(18px, 3vw, 44px) 18px;
+      border-top: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .composer-inner {
+      max-width: 920px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 44px;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .input-wrap {
+      min-height: 50px;
+      display: flex;
+      align-items: flex-end;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .input-wrap:focus-within {
+      border-color: #4c9aff;
+      background: #ffffff;
+    }
+
+    [data-theme="dark"] .input-wrap:focus-within {
+      background: var(--panel);
+    }
+
+    #input {
+      width: 100%;
+      min-height: 48px;
+      max-height: 150px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      padding: 14px 15px;
+      background: transparent;
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    #input::placeholder {
+      color: var(--faint);
+    }
+
+    #send {
+      width: 44px;
+      height: 50px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius);
+      background: var(--accent);
+      color: #ffffff;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease, opacity 0.15s ease;
+    }
+
+    #send:hover {
+      transform: translateY(-1px);
+      background: #0747a6;
+    }
+
+    #send:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .composer-foot {
+      max-width: 920px;
+      margin: 9px auto 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .status-text {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #c1c7d0;
+    }
+
+    .status-text.active .status-dot {
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(0, 82, 204, 0.12);
+    }
+
+    .agent-list,
+    .activity-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .agent-row,
+    .activity-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .agent-row.active {
+      border-color: #abf5d1;
+      background: #e3fcef;
+    }
+
+    .agent-icon,
+    .activity-icon {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: var(--radius);
+      background: #deebff;
+      color: var(--accent-2);
+    }
+
+    .agent-copy,
+    .activity-copy {
+      min-width: 0;
+    }
+
+    .agent-copy strong,
+    .activity-copy strong {
+      display: block;
+      color: #e8edf5;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
+    .agent-copy span,
+    .activity-copy span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .activity-row.pending .activity-icon {
+      color: var(--faint);
+    }
+
+    .activity-row.running .activity-icon {
+      color: var(--accent);
+      animation: pulse 1.1s infinite;
+    }
+
+    .activity-row.done .activity-icon {
+      color: var(--accent);
+    }
+
+    .typing {
+      width: 78px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .typing-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      animation: bounce 1s infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.12s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.24s; }
+
+    .empty-note {
+      padding: 13px;
+      border: 1px dashed #2c3544;
+      border-radius: var(--radius);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @keyframes bounce {
+      0%, 70%, 100% { transform: translateY(0); opacity: 0.35; }
+      35% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.55; }
+      50% { opacity: 1; }
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1180px) {
+      .workspace {
+        grid-template-columns: 250px minmax(0, 1fr);
+      }
+
+      .inspector {
+        display: none;
+      }
+
+      .suggestion-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 820px) {
+      body {
+        overflow: auto;
+      }
+
+      .app-shell {
+        min-height: 100%;
+        height: auto;
+        grid-template-rows: auto 1fr;
+      }
+
+      .topbar {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 12px;
+      }
+
+      .brand {
+        min-width: 0;
+        flex: 1 1 100%;
+      }
+
+      .topbar-center {
+        flex: 1 1 auto;
+      }
+
+      .workspace {
+        min-height: 0;
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .chat-pane {
+        min-height: calc(100vh - 116px);
+      }
+
+      #chat {
+        padding: 16px;
+      }
+
+      .welcome-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .suggestion-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .message {
+        margin-top: 14px;
+      }
+
+      .avatar {
+        display: none;
+      }
+
+      .message-body {
+        max-width: 100%;
+      }
+
+      .composer {
+        padding: 12px;
+      }
+
+      .composer-foot {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark"><i data-lucide="gauge"></i></div>
+        <div>
+          <h1>Sprint Analyzer AI</h1>
+          <span>Multi-agent sprint intelligence</span>
+        </div>
+      </div>
+
+      <div class="topbar-center">
+        <div class="sprint-pill" title="Current sprint">
+          <i data-lucide="calendar-days"></i>
+          <span id="sprint-label">Loading sprint...</span>
+        </div>
+        <div class="jira-pill" title="Live sprint data from Jira">
+          <i data-lucide="plug-zap"></i>
+          Jira connected
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="icon-btn" type="button" onclick="focusComposer()" title="Focus composer" aria-label="Focus composer">
+          <i data-lucide="message-square-plus"></i>
+        </button>
+        <button class="icon-btn" id="theme-toggle" type="button" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
+          <i data-lucide="moon"></i>
+        </button>
+        <button class="text-btn" type="button" onclick="resetChat()" title="Reset chat">
+          <i data-lucide="rotate-ccw"></i>
+          Reset
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar">
+        <section class="section">
+          <h2 class="section-title"><i data-lucide="folder-kanban"></i> Scrum Workspace</h2>
+          <div class="scrum-nav">
+            <div class="scrum-nav-item active"><i data-lucide="layout-dashboard"></i><span>Active sprint</span></div>
+            <div class="scrum-nav-item"><i data-lucide="list-todo"></i><span>Issues</span></div>
+            <div class="scrum-nav-item"><i data-lucide="chart-no-axes-combined"></i><span>Reports</span></div>
+            <div class="scrum-nav-item"><i data-lucide="bot"></i><span>AI agents</span></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title"><i data-lucide="activity"></i> Sprint Snapshot</h2>
+          <div class="progress-shell">
+            <div class="progress-row">
+              <span>Completion</span>
+              <span id="completion-label">--%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="completion-fill"></div>
+            </div>
+            <div class="progress-row">
+              <span id="points-label">-- / -- points</span>
+              <span id="days-label">-- days left</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-label">Elapsed</div>
+              <div class="metric-value" id="elapsed-value">--</div>
+              <div class="metric-sub">days used</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Velocity</div>
+              <div class="metric-value" id="velocity-value">--</div>
+              <div class="metric-sub">last sprint</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Average</div>
+              <div class="metric-value" id="avg-value">--</div>
+              <div class="metric-sub">3 sprint avg</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Team</div>
+              <div class="metric-value" id="team-value" style="font-size: 15px; line-height: 1.25;">--</div>
+              <div class="metric-sub">delivery group</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title"><i data-lucide="zap"></i> Quick Queries</h2>
+          <div class="quick-list">
+            <button class="query-chip" type="button" data-query="What are the blockers?"><i data-lucide="octagon-alert"></i><span>Find blockers</span></button>
+            <button class="query-chip" type="button" data-query="How healthy is the sprint?"><i data-lucide="heart-pulse"></i><span>Sprint health</span></button>
+            <button class="query-chip" type="button" data-query="Who is overloaded?"><i data-lucide="users"></i><span>Workload risks</span></button>
+            <button class="query-chip" type="button" data-query="Will we finish on time?"><i data-lucide="timer"></i><span>Finish forecast</span></button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="chat-pane">
+        <div id="chat">
+          <div class="welcome-panel" id="welcome">
+            <div class="welcome-header">
+              <div>
+                <h2>Ask for a sprint readout, not a generic report.</h2>
+                <p>The assistant routes your question to focused agents for tasks, health, blockers, and recommendations.</p>
+              </div>
+              <div class="health-chip" id="risk-label">Awaiting data</div>
+            </div>
+
+            <div class="suggestion-grid" id="suggestions">
+              <button class="suggestion-card" type="button" data-query="Full sprint report"><i data-lucide="layout-dashboard"></i><span>Full sprint report</span></button>
+              <button class="suggestion-card" type="button" data-query="What are the todos?"><i data-lucide="list-checks"></i><span>Open task breakdown</span></button>
+              <button class="suggestion-card" type="button" data-query="What are the blockers?"><i data-lucide="shield-alert"></i><span>Blocker analysis</span></button>
+              <button class="suggestion-card" type="button" data-query="Give me recommendations"><i data-lucide="lightbulb"></i><span>Recommended actions</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="composer">
+          <div class="composer-inner">
+            <div class="input-wrap">
+              <textarea id="input" rows="1" placeholder="Ask about blockers, owners, burndown, risk, or next actions..."></textarea>
+            </div>
+            <button id="send" type="button" onclick="sendQuery()" title="Send" aria-label="Send">
+              <i data-lucide="send-horizontal"></i>
+            </button>
+          </div>
+          <div class="composer-foot">
+            <div class="status-text" id="status">
+              <span class="status-dot"></span>
+              <span id="status-label">Ready</span>
+            </div>
+            <span>Enter to send. Shift+Enter for a new line.</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="inspector">
+        <section class="section">
+          <h2 class="section-title"><i data-lucide="bot"></i> Agent Bench</h2>
+          <div class="agent-list" id="agent-list">
+            <div class="agent-row" data-agent="todo">
+              <div class="agent-icon"><i data-lucide="list-todo"></i></div>
+              <div class="agent-copy"><strong>Task Agent</strong><span>Statuses, owners, points</span></div>
+            </div>
+            <div class="agent-row" data-agent="health">
+              <div class="agent-icon"><i data-lucide="chart-no-axes-combined"></i></div>
+              <div class="agent-copy"><strong>Health Agent</strong><span>Burndown and delivery risk</span></div>
+            </div>
+            <div class="agent-row" data-agent="blocker">
+              <div class="agent-icon"><i data-lucide="triangle-alert"></i></div>
+              <div class="agent-copy"><strong>Blocker Agent</strong><span>Stalls and dependencies</span></div>
+            </div>
+            <div class="agent-row" data-agent="recommendation">
+              <div class="agent-icon"><i data-lucide="sparkles"></i></div>
+              <div class="agent-copy"><strong>Recommendation Agent</strong><span>Prioritized next actions</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title"><i data-lucide="route"></i> Current Run</h2>
+          <div class="activity-list" id="activity-list">
+            <div class="empty-note">Ask a question to see routing, selected agents, and synthesis status.</div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+    const status = document.getElementById("status");
+    const statusLabel = document.getElementById("status-label");
+    const activityList = document.getElementById("activity-list");
+    const agentRows = Array.from(document.querySelectorAll(".agent-row"));
+    const themeToggle = document.getElementById("theme-toggle");
+
+    const agentLabels = {
+      todo: "Task Agent",
+      health: "Health Agent",
+      blocker: "Blocker Agent",
+      recommendation: "Recommendation Agent"
+    };
+
+    const agentIcons = {
+      todo: "list-todo",
+      health: "chart-no-axes-combined",
+      blocker: "triangle-alert",
+      recommendation: "sparkles",
+      summary: "messages-square"
+    };
+
+    marked.setOptions({ breaks: true, gfm: true });
+
+    function mountIcons() {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    function applySavedTheme() {
+      const savedTheme = localStorage.getItem("sprint-theme") || "light";
+      document.documentElement.dataset.theme = savedTheme;
+      updateThemeIcon(savedTheme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.dataset.theme || "light";
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("sprint-theme", next);
+      updateThemeIcon(next);
+      mountIcons();
+    }
+
+    function updateThemeIcon(theme) {
+      if (!themeToggle) return;
+      themeToggle.innerHTML = `<i data-lucide="${theme === "dark" ? "sun" : "moon"}"></i>`;
+      themeToggle.title = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+      themeToggle.setAttribute("aria-label", themeToggle.title);
+    }
+
+    applySavedTheme();
+    mountIcons();
+    wireQueryButtons();
+    loadSprintMeta();
+    input.focus();
+
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 150) + "px";
+    });
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendQuery();
+      }
+    });
+
+    function wireQueryButtons() {
+      document.querySelectorAll("[data-query]").forEach((button) => {
+        button.addEventListener("click", () => ask(button.dataset.query));
+      });
+    }
+
+    async function loadSprintMeta() {
+      try {
+        const response = await fetch("/sprint-meta");
+        const meta = await response.json();
+        applySprintMeta(meta);
+      } catch (error) {
+        applySprintMeta({
+          sprint_name: "Sprint 42 - Nova Release",
+          team: "Team Orion",
+          total_story_points: 84,
+          completed_story_points: 31,
+          days_elapsed: 7,
+          days_remaining: 7,
+          velocity_last_sprint: 72,
+          velocity_avg_3_sprints: 68
+        });
+      }
+    }
+
+    function applySprintMeta(meta) {
+      const total = Number(meta.total_story_points || 0);
+      const completed = Number(meta.completed_story_points || 0);
+      const percent = total ? Math.round((completed / total) * 100) : 0;
+
+      document.getElementById("sprint-label").textContent = meta.sprint_name || "Current sprint";
+      document.getElementById("completion-label").textContent = `${percent}%`;
+      document.getElementById("completion-fill").style.width = `${Math.min(percent, 100)}%`;
+      document.getElementById("points-label").textContent = `${completed} / ${total} points`;
+      document.getElementById("days-label").textContent = `${meta.days_remaining ?? "--"} days left`;
+      document.getElementById("elapsed-value").textContent = meta.days_elapsed ?? "--";
+      document.getElementById("velocity-value").textContent = meta.velocity_last_sprint ?? "--";
+      document.getElementById("avg-value").textContent = meta.velocity_avg_3_sprints ?? "--";
+      document.getElementById("team-value").textContent = meta.team || "--";
+
+      const riskLabel = document.getElementById("risk-label");
+      if (percent < 45) {
+        riskLabel.textContent = "Needs attention";
+      } else if (percent < 75) {
+        riskLabel.textContent = "Watch closely";
+      } else {
+        riskLabel.textContent = "On track";
+      }
+    }
+
+    function ask(query) {
+      input.value = query;
+      input.dispatchEvent(new Event("input"));
+      sendQuery();
+    }
+
+    function focusComposer() {
+      input.focus();
+    }
+
+    function appendUserMessage(text) {
+      const message = document.createElement("div");
+      message.className = "message user";
+      message.innerHTML = `
+        <div class="avatar"><i data-lucide="user"></i></div>
+        <div class="message-body">
+          <div class="message-meta">You</div>
+          <div class="bubble">${escapeHtml(text)}</div>
+        </div>
+      `;
+      chat.appendChild(message);
+      mountIcons();
+      scrollBottom();
+    }
+
+    function appendAssistantMessage(text, agents) {
+      const message = document.createElement("div");
+      message.className = "message assistant";
+
+      const badges = buildAgentBadges(agents);
+      message.innerHTML = `
+        <div class="avatar"><i data-lucide="bot"></i></div>
+        <div class="message-body">
+          <div class="message-meta">Sprint AI</div>
+          ${badges}
+          <div class="bubble">${marked.parse(text || "")}</div>
+        </div>
+      `;
+
+      chat.appendChild(message);
+      mountIcons();
+      scrollBottom();
+    }
+
+    function buildAgentBadges(agents) {
+      if (!agents || !agents.length) return "";
+
+      const tags = agents
+        .map((agent) => `<span class="agent-tag ${agent}"><i data-lucide="${agentIcons[agent] || "bot"}"></i>${agent}</span>`)
+        .join("");
+
+      return `<div class="agent-tags">${tags}<span class="agent-tag summary"><i data-lucide="${agentIcons.summary}"></i>summary</span></div>`;
+    }
+
+    function showTyping() {
+      const message = document.createElement("div");
+      message.className = "message assistant";
+      message.id = "typing";
+      message.innerHTML = `
+        <div class="avatar"><i data-lucide="bot"></i></div>
+        <div class="message-body">
+          <div class="message-meta">Sprint AI</div>
+          <div class="typing"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>
+        </div>
+      `;
+      chat.appendChild(message);
+      mountIcons();
+      scrollBottom();
+    }
+
+    function removeTyping() {
+      const typing = document.getElementById("typing");
+      if (typing) typing.remove();
+    }
+
+    function setStatus(text, active = false) {
+      statusLabel.textContent = text;
+      status.classList.toggle("active", active);
+    }
+
+    function setAgentActivity(agents = []) {
+      agentRows.forEach((row) => {
+        row.classList.toggle("active", agents.includes(row.dataset.agent));
+      });
+    }
+
+    function setActivity(stage, agents = []) {
+      const rows = [
+        { key: "route", label: "Route query", detail: "Choosing the right analysis agents", icon: "route" },
+        { key: "agents", label: "Run agents", detail: agents.length ? agents.map((agent) => agentLabels[agent] || agent).join(", ") : "Waiting for routing", icon: "bot" },
+        { key: "summary", label: "Synthesize answer", detail: "Combining findings into one response", icon: "messages-square" }
+      ];
+
+      const order = { route: 0, agents: 1, summary: 2, done: 3 };
+      const current = order[stage] ?? 0;
+
+      activityList.innerHTML = rows.map((row, index) => {
+        const state = index < current ? "done" : index === current ? "running" : "pending";
+        const icon = state === "done" ? "check" : row.icon;
+        return `
+          <div class="activity-row ${state}">
+            <div class="activity-icon"><i data-lucide="${icon}"></i></div>
+            <div class="activity-copy"><strong>${row.label}</strong><span>${row.detail}</span></div>
+          </div>
+        `;
+      }).join("");
+
+      mountIcons();
+    }
+
+    async function sendQuery() {
+      const query = input.value.trim();
+      if (!query || sendBtn.disabled) return;
+
+      const welcome = document.getElementById("welcome");
+      if (welcome) welcome.style.display = "none";
+
+      appendUserMessage(query);
+      input.value = "";
+      input.style.height = "auto";
+      sendBtn.disabled = true;
+      showTyping();
+      setStatus("Routing to agents", true);
+      setAgentActivity([]);
+      setActivity("route");
+
+      try {
+        const response = await fetch("/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Request failed with ${response.status}`);
+        }
+
+        const data = await response.json();
+        const agents = data.agents_used || [];
+
+        setAgentActivity(agents);
+        setActivity("summary", agents);
+        setStatus(`Used ${formatAgents(agents)} plus summary`, false);
+        removeTyping();
+        appendAssistantMessage(data.answer, agents);
+        setActivity("done", agents);
+
+        if (data.sprint_name) {
+          document.getElementById("sprint-label").textContent = data.sprint_name;
+        }
+      } catch (error) {
+        removeTyping();
+        setAgentActivity([]);
+        setStatus("Server connection failed", false);
+        activityList.innerHTML = `<div class="empty-note">Could not reach the API. Start the server with <code>uv run uvicorn src.main:app --reload</code>.</div>`;
+        appendAssistantMessage("I could not reach the server. Make sure the FastAPI app is running, then try again.", []);
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+        mountIcons();
+      }
+    }
+
+    async function resetChat() {
+      try {
+        await fetch("/reset", { method: "POST" });
+      } catch (error) {}
+
+      chat.innerHTML = `
+        <div class="welcome-panel" id="welcome">
+          <div class="welcome-header">
+            <div>
+              <h2>Fresh sprint conversation.</h2>
+              <p>Ask for task status, blockers, sprint health, owners, or recommended next actions.</p>
+            </div>
+            <div class="health-chip" id="risk-label">Ready</div>
+          </div>
+          <div class="suggestion-grid" id="suggestions">
+            <button class="suggestion-card" type="button" data-query="Full sprint report"><i data-lucide="layout-dashboard"></i><span>Full sprint report</span></button>
+            <button class="suggestion-card" type="button" data-query="What are the todos?"><i data-lucide="list-checks"></i><span>Open task breakdown</span></button>
+            <button class="suggestion-card" type="button" data-query="What are the blockers?"><i data-lucide="shield-alert"></i><span>Blocker analysis</span></button>
+            <button class="suggestion-card" type="button" data-query="Give me recommendations"><i data-lucide="lightbulb"></i><span>Recommended actions</span></button>
+          </div>
+        </div>
+      `;
+
+      setStatus("Ready", false);
+      setAgentActivity([]);
+      activityList.innerHTML = `<div class="empty-note">Ask a question to see routing, selected agents, and synthesis status.</div>`;
+      wireQueryButtons();
+      mountIcons();
+      loadSprintMeta();
+      input.focus();
+    }
+
+    function formatAgents(agents) {
+      if (!agents || !agents.length) return "summary";
+      return agents.map((agent) => agentLabels[agent] || agent).join(", ");
+    }
+
+    function scrollBottom() {
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
