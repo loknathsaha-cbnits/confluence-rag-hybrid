@@ -150,7 +150,7 @@ def retriever_node(state: State) -> Dict[str, Any]:
             data_source = DataSource(
                 chunk_id=chunk.get("chunk_id", ""),
                 text_content=chunk.get("text", ""),
-                score=chunk.get("score", 0.0),
+                score=float(chunk.get("score", 0.0)),
                 source=source_info
             )
             
