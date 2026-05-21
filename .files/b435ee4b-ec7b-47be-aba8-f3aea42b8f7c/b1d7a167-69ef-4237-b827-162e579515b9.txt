@@ -1,2 +1,0 @@
-🔗 **Official Documentation:**
-[Fix: SAML Login Issues in Embedded Browser](https://cbnits-team-eh0i70zr.atlassian.net/wiki/spaces/CKB/pages/229573/Fix+SAML+Login+Issues+in+Embedded+Browser)
