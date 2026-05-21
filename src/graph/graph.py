@@ -4,6 +4,7 @@ from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
 from src.graph.state import State
 from src.subgraphs.confluence.graph import compiled_subgraph
+from langgraph.checkpoint.memory import MemorySaver
 
 
 def query_processing_node(state: State) -> Dict[str, Any]:
@@ -12,26 +13,33 @@ def query_processing_node(state: State) -> Dict[str, Any]:
     print(f"[Parent Node] Processing incoming query: {raw_query}")
     return {"query": raw_query.strip()}
 
-def call_retrieval_subgraph_node(state: State) -> Dict[str, Any]:
+async def call_retrieval_subgraph_node(state: State) -> Dict[str, Any]:
     """
     Acts as the entry bridge. Maps parent state keys into the subgraph structure,
     runs the execution flow, and extracts values back to the parent scope.
     """
     print("[Parent Node] Handing off control to Retrieval Subgraph...")
-    
+    print("\n--- [DEBUG 2: PARENT RETRIEVAL NODE ENTRY] ---")
+    print(f"State query: {state.get('query')}")
+    print(f"State previous_answer: {repr(state.get('previous_answer'))}")
+    print("----------------------------------------------\n")
+    past_answer = state.get("current_answer", "")
+
     subgraph_input = {
         "query": state["query"],
-        "user_id": state["user_id"]
+        "user_id": state["user_id"],
+        "previous_answer": past_answer,
+        "current_answer": past_answer
     }
     
-    subgraph_output = compiled_subgraph.invoke(subgraph_input)
+    subgraph_output = await compiled_subgraph.ainvoke(subgraph_input)
 
     print("============== SUBGRAPH OUTPUT ==============")
     print(subgraph_output)
 
     # FIX: Explicitly pull 'sources' out of the subgraph and return it
     return {
-        "answer": subgraph_output.get("answer", "No answer generated."),
+        "current_answer": subgraph_output.get("current_answer", "No answer generated."),
         "confidence_score": subgraph_output.get("confidence_score", 0.0),
         "sources": subgraph_output.get("sources", [])  # Passing it to Parent State
     }
@@ -47,4 +55,5 @@ parent_builder.add_edge(START, "process_query")
 parent_builder.add_edge("process_query", "retrieval_flow_subgraph")
 parent_builder.add_edge("retrieval_flow_subgraph", END)
 
-main_agent_graph = parent_builder.compile()
+memory = MemorySaver()
+main_agent_graph = parent_builder.compile(checkpointer=memory)

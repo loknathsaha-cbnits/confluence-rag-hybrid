@@ -7,7 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from src.graph.state import State
 
 class GenerationOutput(BaseModel):
-    answer: str = Field(
+    current_answer: str = Field(
         description="A highly comprehensive, well-structured technical explanation (minimum 200 words) matching the markdown rules."
     )
     confidence_score: float = Field(
@@ -66,12 +66,12 @@ def generate_node(state: State) -> Dict[str, Any]:
         if response.tool_calls:
             structured_data = response.tool_calls[0]['args']
             return {
-                "answer": structured_data.get("answer"),
+                "current_answer": structured_data.get("current_answer"),
                 "confidence_score": float(structured_data.get("confidence_score", 0.0))
             }
         else:
             return {
-                "answer": response.content,
+                "current_answer": response.content,
                 "confidence_score": 0.0 
             }
             
@@ -83,7 +83,7 @@ def generate_node(state: State) -> Dict[str, Any]:
             try:
                 import re
                 # Use regex to isolate the text sitting inside the answer property bounds
-                answer_match = re.search(r'"answer":\s*"(.*?)"\s*,\s*"confidence_score"', err_msg, re.DOTALL)
+                answer_match = re.search(r'"current_answer":\s*"(.*?)"\s*,\s*"confidence_score"', err_msg, re.DOTALL)
                 score_match = re.search(r'"confidence_score":\s*([\d\.]+)', err_msg)
                 
                 fallback_answer = answer_match.group(1).encode().decode('unicode_escape') if answer_match else "Context parsing anomaly."
@@ -93,7 +93,7 @@ def generate_node(state: State) -> Dict[str, Any]:
                 fallback_answer = fallback_answer.replace('\\n', '\n')
                 
                 return {
-                    "answer": fallback_answer,
+                    "current_answer": fallback_answer,
                     "confidence_score": fallback_score
                 }
             except Exception as extraction_error:

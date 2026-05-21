@@ -25,5 +25,10 @@ class State(TypedDict):
     retrieved_results: NotRequired[Annotated[List[DataSource], operator.add]]
     sources: NotRequired[Annotated[List[SourceState], operator.add]]
 
-    answer: NotRequired[str]
+    current_answer: NotRequired[str]
+    previous_answer: NotRequired[str]
+    
+    execution_status: NotRequired[str]
     confidence_score: NotRequired[float]
+
+    router_decision: NotRequired[str]

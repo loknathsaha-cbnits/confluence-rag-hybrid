@@ -34,10 +34,28 @@ async def on_message(msg: cl.Message):
     """Runs whenever a user sends a message in the UI."""
     
     user_id = cl.user_session.get("user_id")
+    thread_id = cl.context.session.id
+    config = RunnableConfig(configurable={"thread_id": thread_id})
     
+    # 1. Fetch the existing state from the checkpoint memory before triggering a new turn
+    past_answer = ""
+    try:
+        current_graph_state = await main_agent_graph.aget_state(config)
+        if current_graph_state and current_graph_state.values:
+            # Safely grab the answer generated during the previous turn
+            past_answer = current_graph_state.values.get("current_answer", "")
+
+        print("\n--- [DEBUG 1: MAIN.PY CHECKPOINT ENTRY] ---")
+        print(f"Loaded past_answer from memory: {repr(past_answer)}")
+        print("-------------------------------------------\n")
+    except Exception as state_err:
+        print(f"[Chainlit Session Warning] Could not fetch checkpoint state: {state_err}")
+
+    # 2. Package the initial state, passing down the historical answer under a protected key
     initial_state = {
         "query": msg.content,
-        "user_id": user_id
+        "user_id": user_id,
+        "previous_answer": past_answer  # Handed off safely to your state pipeline
     }
     
     final_answer = cl.Message(content="")
@@ -46,18 +64,15 @@ async def on_message(msg: cl.Message):
     print(f"\n[Chainlit Session] Processing query: {msg.content}")
     
     try:
-        # Run the entire graph execution pipeline
-        result = await cl.make_async(main_agent_graph.invoke)(
-            initial_state, 
-            config=RunnableConfig(configurable={"thread_id": cl.context.session.id})
-        )
+        # 3. Run the entire graph execution pipeline
+        result = await main_agent_graph.ainvoke(initial_state, config=config)
         
-        # 1. Extract values matching your schema output
-        answer = result.get("answer") or result.get("final_answer") or "No response generated."
+        # Extract values matching your updated schema output
+        answer = result.get("current_answer") or result.get("final_answer") or "No response generated."
         confidence = result.get("confidence_score", 0.0)
         raw_sources = result.get("sources", [])
         
-        # 2. Build Chainlit text elements for references (Clickable UI Cards)
+        # 4. Build Chainlit text elements for references (Clickable UI Cards)
         cl_elements = []
         seen_urls = set()
         
@@ -83,4 +98,4 @@ async def on_message(msg: cl.Message):
         
     except Exception as e:
         final_answer.content = f"❌ An error occurred during graph processing: {str(e)}"
-        await final_answer.update()     
+        await final_answer.update()
