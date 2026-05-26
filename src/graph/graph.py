@@ -29,7 +29,8 @@ async def call_retrieval_subgraph_node(state: State) -> Dict[str, Any]:
         "query": state["query"],
         "user_id": state["user_id"],
         "previous_answer": past_answer,
-        "current_answer": past_answer
+        "current_answer": past_answer,
+        "transcript": state.get("transcript"),
     }
     
     subgraph_output = await compiled_subgraph.ainvoke(subgraph_input)

@@ -1,0 +1,85 @@
+# Meeting Minutes: Sprint Planning – May 2026
+
+**Date:** May 2026
+**Meeting Type:** Sprint Planning
+**Attendees:** Alice, Bob, Loknath
+
+---
+
+## Agenda
+
+1. Review current sprint progress
+2. Finalize sprint objectives and deliverables
+3. Discuss pending technical tasks and blockers
+4. Assign responsibilities for the upcoming sprint
+5. Confirm communication schedule and team coordination
+
+---
+
+# Sprint Goal
+
+The team finalized the primary sprint objective as successfully deploying the AI-powered RAG (Retrieval-Augmented Generation) pipeline to the production environment. The goal includes ensuring stable backend integration, improved retrieval accuracy, and seamless deployment workflows.
+
+Key focus areas:
+
+* Production-ready RAG pipeline
+* Stable API integrations
+* Deployment automation
+* PRD validation and review
+* Infrastructure readiness for staging and production
+
+---
+
+# Discussion Summary
+
+### 1. RAG Pipeline Deployment
+
+The team discussed the current progress of the hybrid RAG architecture and agreed that production deployment is the top priority for this sprint. Additional attention will be given to optimizing retrieval latency and ensuring reliable response generation from the backend services.
+
+### 2. API Integration Progress
+
+Alice shared updates regarding ongoing backend API integrations. Most endpoints are functional, but final testing and integration validation are still pending before deployment.
+
+### 3. PRD Review and Documentation
+
+Bob highlighted the need for a detailed review of PRD v2 to ensure all sprint deliverables align with business and technical requirements. Documentation consistency and feature completeness were emphasized.
+
+### 4. Staging Environment Setup
+
+Loknath discussed the staging deployment plan, including server configuration, environment variables, and deployment verification. The staging environment will be used for integration testing before the production rollout.
+
+### 5. Team Coordination
+
+The team agreed that better synchronization during development is necessary. To improve communication and status tracking, daily standup meetings will now begin at **10:00 AM** instead of the previous schedule.
+
+---
+
+# Action Items
+
+| Team Member | Task                                                        | Deadline                  |
+| ----------- | ----------------------------------------------------------- | ------------------------- |
+| Alice       | Complete API integration and perform final endpoint testing | Friday                    |
+| Bob         | Review and validate PRD v2 documentation                    | Before next sprint review |
+| Loknath     | Deploy and verify the staging environment setup             | This sprint               |
+
+---
+
+# Decisions Made
+
+* The official sprint goal is to ship the RAG pipeline to production.
+* Daily standup meetings are rescheduled to **10:00 AM**.
+* Staging deployment must be completed before production rollout.
+* PRD v2 will act as the reference document for sprint deliverables.
+
+---
+
+# Next Steps
+
+* Complete assigned action items before the sprint review meeting.
+* Conduct staging environment testing after deployment.
+* Validate RAG pipeline performance metrics.
+* Review deployment readiness checklist before production release.
+
+# Meeting Conclusion
+
+The meeting concluded with agreement on sprint priorities, ownership of tasks, and deployment timelines. Team members acknowledged the importance of maintaining consistent communication to ensure successful delivery of the sprint objectives.

@@ -16,7 +16,7 @@ class DataSource(TypedDict):
 
 class State(TypedDict):
     """
-    The global state schema for OpsEngine. 
+    The global state schema for OpsEngine.
     Maintains conversation history, routing directions, and temporary tool payloads.
     """
     query: str
@@ -27,8 +27,14 @@ class State(TypedDict):
 
     current_answer: NotRequired[str]
     previous_answer: NotRequired[str]
-    
+
+    transcript: NotRequired[str]
+
     execution_status: NotRequired[str]
     confidence_score: NotRequired[float]
 
     router_decision: NotRequired[str]
+
+    page_created: NotRequired[bool]
+    created_page_id: NotRequired[str]
+    generated_response: NotRequired[str]

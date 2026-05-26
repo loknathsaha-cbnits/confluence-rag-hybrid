@@ -30,7 +30,7 @@ def generate_node(state: State) -> Dict[str, Any]:
     
     # FIX 1: Set temperature to 0.1 for high instruction compliance and predictable formatting
     llm = ChatOpenAI(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         api_key=os.getenv("GROQ_API_KEY"),
         temperature=0.1, 
         base_url="https://api.groq.com/openai/v1"

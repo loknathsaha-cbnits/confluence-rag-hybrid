@@ -46,6 +46,13 @@ async def on_chat_start():
 async def on_message(msg: cl.Message):
     """Runs whenever a user sends a message in the UI."""
 
+    print(f"\n[DEBUG] msg.content: {repr(msg.content)}")
+    print(f"[DEBUG] msg.elements count: {len(msg.elements) if msg.elements else 0}")
+    if msg.elements:
+        for el in msg.elements:
+            print(f"[DEBUG] element → name={el.name}, path={getattr(el, 'path', 'N/A')}, type={type(el).__name__}")
+    
+
     user_id = cl.user_session.get("user_id")
     thread_id = cl.context.session.id
     config = RunnableConfig(configurable={"thread_id": thread_id})
@@ -53,12 +60,40 @@ async def on_message(msg: cl.Message):
     # Record start time for processing duration
     start_time = time.time()
 
+    # ── STEP 0: Handle uploaded transcript files ───────────────────────────────
+    transcript_text = None
+
+    if msg.elements:
+        for element in msg.elements:
+            if hasattr(element, "path") and element.path:
+                if element.name.lower().endswith((".txt", ".md", ".text")):
+                    try:
+                        with open(element.path, "r", encoding="utf-8") as f:
+                            transcript_text = f.read().strip()
+
+                        print(f"\n[Chainlit] Transcript file received: {element.name} ({len(transcript_text)} chars)")
+
+                        await cl.Message(
+                            content=f"📄 Transcript **{element.name}** received ({len(transcript_text)} characters). Creating Confluence page..."
+                        ).send()
+
+                    except Exception as file_err:
+                        await cl.Message(
+                            content=f"❌ Failed to read file `{element.name}`: {file_err}"
+                        ).send()
+                        return
+                else:
+                    await cl.Message(
+                        content=f"⚠️ Unsupported file type: `{element.name}`. Please upload a `.txt` or `.md` transcript file."
+                    ).send()
+                    return
+    # ──────────────────────────────────────────────────────────────────────────
+
     # 1. Fetch the existing state from the checkpoint memory before triggering a new turn
     past_answer = ""
     try:
         current_graph_state = await main_agent_graph.aget_state(config)
         if current_graph_state and current_graph_state.values:
-            # Safely grab the answer generated during the previous turn
             past_answer = current_graph_state.values.get("current_answer", "")
 
         print("\n--- [DEBUG 1: MAIN.PY CHECKPOINT ENTRY] ---")
@@ -67,12 +102,17 @@ async def on_message(msg: cl.Message):
     except Exception as state_err:
         print(f"[Chainlit Session Warning] Could not fetch checkpoint state: {state_err}")
 
-    # 2. Package the initial state, passing down the historical answer under a protected key
+    # 2. Package the initial state — include transcript if a file was uploaded
     initial_state = {
-        "query": msg.content,
+        "query": msg.content or "Create a Confluence page from the uploaded meeting transcript.",
         "user_id": user_id,
-        "previous_answer": past_answer  # Handed off safely to your state pipeline
+        "previous_answer": past_answer,
+        **({"transcript": transcript_text} if transcript_text else {})
     }
+
+        # TEMP DEBUG
+    print(f"[DEBUG] transcript_text extracted: {repr(transcript_text[:200]) if transcript_text else None}")
+    print(f"[DEBUG] initial_state keys: {list(initial_state.keys())}")
 
     final_answer = cl.Message(content="")
     await final_answer.send()
@@ -109,7 +149,6 @@ async def on_message(msg: cl.Message):
             if url and url not in seen_urls:
                 seen_urls.add(url)
 
-                # Store source for database
                 db_sources.append({
                     'url': url,
                     'title': title,
@@ -117,14 +156,16 @@ async def on_message(msg: cl.Message):
                     'score': score
                 })
 
-                # We use cl.Text with a markdown clean link inside the body
-                # This keeps the reference card itself compact and professional
                 card_content = f"🔗 **Official Documentation:**\n[{title}]({url})"
                 cl_elements.append(
                     cl.Text(name=f"📄 {title}", content=card_content, display="inline")
                 )
 
-        formatted_response = f"{answer}\n\n---\n💡 *Confidence Score: {float(confidence) * 100:.0f}%*"
+        # Suppress confidence score display for transcript/MCP action flows
+        if transcript_text:
+            formatted_response = answer
+        else:
+            formatted_response = f"{answer}\n\n---\n💡 *Confidence Score: {float(confidence) * 100:.0f}%*"
 
         final_answer.content = formatted_response
         final_answer.elements = cl_elements
@@ -136,7 +177,7 @@ async def on_message(msg: cl.Message):
             db.save_interaction(
                 session_id=thread_id,
                 user_id=user_id,
-                query=msg.content,
+                query=msg.content or f"[Transcript Upload: {len(transcript_text or '')} chars]",
                 answer=answer,
                 confidence_score=float(confidence),
                 sources=db_sources,
@@ -150,20 +191,18 @@ async def on_message(msg: cl.Message):
             print(f"[Database Warning] Could not store interaction: {db_err}")
 
     except Exception as e:
-        # Calculate processing time even on error
         processing_time_ms = int((time.time() - start_time) * 1000)
         error_msg = str(e)
 
         final_answer.content = f"❌ An error occurred during graph processing: {error_msg}"
         await final_answer.update()
 
-        # Store failed interaction in database
         db = get_db_manager()
         try:
             db.save_interaction(
                 session_id=thread_id,
                 user_id=user_id,
-                query=msg.content,
+                query=msg.content or "[Transcript Upload]",
                 answer="Error in processing",
                 confidence_score=0.0,
                 sources=[],

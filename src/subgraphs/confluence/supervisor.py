@@ -11,6 +11,8 @@ class IntentClassifier(BaseModel):
     )
 
 def supervisor_node(state: State) -> Dict[str, Any]:
+    print(f"[DEBUG GRAPH] transcript in state: {'YES' if state.get('transcript') else 'NO'}")
+    print(f"[DEBUG GRAPH] transcript length: {len(state.get('transcript', ''))}")
     user_query = state.get("query", "")
     print(f"[Node: Supervisor] Classifying incoming query intent: '{user_query}'")
     
